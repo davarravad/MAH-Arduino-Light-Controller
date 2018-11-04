@@ -1,4 +1,9 @@
-/*  Copyright (c) 2014 by Keith Woodard <rkwoodard ~AT~ gmail.com>
+/*  Code Created by Keith Woodard and altered to work with MAH Wireless Light System with permission.
+
+	Code revised to work with MAH Wireless Light System by David "DaVaR" Sargent.
+	https://www.MyArduinoHome.com/
+	
+	MAH Arduino Light Controller RF Bridge v1
 
     The Arduino Light Controller RF Controller Sketch is free software: you can redistribute it
     and/or modify it under the terms of the GNU General Public License as
@@ -19,12 +24,12 @@
 #include <EEPROM.h>  /* EEPROM library used to read/write configuration settings to EEPROM */
 #include "printf.h"
 
-const char versionId[] = "0.3\0";
+const char versionId[] = "1";
 
 #undef DEBUG_PRINT_MSGS      
 
 #define BAUD_RATE  57600
-#define MAX_NUMBER_OF_CHANNELS  256
+#define MAX_NUMBER_OF_CHANNELS  256  /* Not Tested Beyond 256 channels */
 
 #define _RF_CS_PIN  8                /* Arduino pin connected to the nRF24L01+ Chip Select signals */
 #define _RF_CE_PIN  10               /* Arduino pin connected to the nRF24L01+ Chip Enable signals */
@@ -57,7 +62,7 @@ unsigned int number_of_channels; /* Number of channels to expected from Vixen's 
 
 /*
  * Function: setup
- * Description: Power-on configuration of the arduino.  Initialize the
+ * Description: Power-on configuration of the Arduino.  Initialize the
  * correct pin modes for Arduino pins used.  Initialize serial port
  * communications, the TLC5940, and all global data. 
  */
@@ -84,7 +89,7 @@ void setup() {
   hardwareAvailable = radio.isPVariant();
   if (hardwareAvailable == false)
   {
-    Serial.write("nRF24L01+ module not found\n");
+    Serial.write(" nRF24L01+ module not found\n Visit www.MyArduinoHome.com for more information.\n");
   }
 }
 
@@ -246,7 +251,8 @@ void PrintMenu()
     Serial.read();
   }
   
-  Serial.println("Arduino Light Controller RF Bridge Main Menu");
+  Serial.println("My Arduino Home Arduino Light Controller RF Bridge Main Menu");
+  Serial.println("www.MyArduinoHome.com");
   printf("Version: %s\n", versionId);
   Serial.println(" (t) Enter Test Mode - All channels fade");
   Serial.println(" (w) Enter Test Mode - Walk channels");
@@ -257,7 +263,7 @@ void PrintMenu()
 }
 
 /* Function: RunBootMode
- * Description: If in boot mode, look for an "I" on the serial port.  If an "I"
+ * Description: If in boot mode, look for any data on the serial port.  If any data
  *    is available, clear the serial port buffer and transition to interactive
  *    mode.
  */
@@ -265,12 +271,8 @@ void RunBootMode()
 {
    if (Serial.available() > 0)
    {
-     char command = Serial.read();
-     
-     if ( (command == 'I') || (command == 'i') )
-     {
-       mode = INTERACTIVE_MODE;
-     }
+     Serial.read();
+     mode = INTERACTIVE_MODE;
    } else {
      delay(100);
    }
@@ -514,7 +516,7 @@ void RunConfigMode()
   Serial.print("  Number Of Channels ("); Serial.print(number_of_channels); Serial.print("): ");
   newValue = ReadNumberFromSerial();
   Serial.println("");
-  if ((newValue >= 0) && (newValue <= 255))
+  if ((newValue >= 0) && (newValue <= 256))
   {
     newNumberOfChannels = newValue;
   } else {

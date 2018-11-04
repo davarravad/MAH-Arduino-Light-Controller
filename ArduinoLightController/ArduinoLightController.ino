@@ -1,4 +1,9 @@
-/*  Copyright (c) 2014 by Keith Woodard <rkwoodard ~AT~ gmail.com>
+/*  Code Created by Keith Woodard and altered to work with MAH Wireless Light System with permission.
+
+	Code revised to work with MAH Wireless Light System by David "DaVaR" Sargent.
+	https://www.MyArduinoHome.com/
+	
+	MAH Arduino Light Controller v1
 
     The Arduino Light Controller Sketch is free software: you can redistribute it
     and/or modify it under the terms of the GNU General Public License as
@@ -20,13 +25,13 @@
 #include <EEPROM.h>  /* EEPROM library used to read/write configuration settings to EEPROM */
 #include "printf.h"
 
-const char versionId[] = "0.3\0";
+const char versionId[] = "1";
 
 #define BAUD_RATE  57600
 
-#define NUMBER_OF_TLCS_TOTAL    2    /* Each Shield has 2 TLC5940s on it */
-#define NUMBER_OF_CHANNELS     16*NUMBER_OF_TLCS_TOTAL /* Number of channels per shield (32) */
-#define MAX_NUMBER_OF_SHIELDS  4    /* Maximum number of shields that can be stacked on one Arduino */
+#define NUMBER_OF_TLCS_TOTAL    4    /* Each RJ45 Port can have 4 TLC5940s on it */
+#define NUMBER_OF_CHANNELS     16*NUMBER_OF_TLCS_TOTAL /* Number of channels per RJ45 Port (64) */
+#define MAX_NUMBER_OF_SHIELDS  4    /* Maximum number of RJ45 ports that can be used on one Arduino */
 
 #define INTERRUPT  0                /* Interrupt used for the zero cross signal */
 #define _BLANK_PIN  9               /* Arduino pin connected to the TLC5940 BLANK signals */
@@ -71,7 +76,7 @@ const uint64_t rf_pipe = 0xF0F0F0F0E1LL;               /* RF Pipe for receiving 
 
 // Configuration data
 unsigned int interface_type;  /* Interface type to Vixen */
-unsigned int latch_pin[MAX_NUMBER_OF_SHIELDS];  /* Store the latch pin for each possible board */
+unsigned int latch_pin[MAX_NUMBER_OF_SHIELDS];  /* Set the latch pin for each possible board */
 unsigned int rf_channel;      /* For Future Use */
 unsigned int starting_address; /* For Future Use */
 unsigned int number_of_boards; /* Number of shields connected to the Arduino */
@@ -346,8 +351,6 @@ void PrintMenu()
   {
     Serial.read();
   }
-  
-  Serial.println("Arduino Light Controller Main Menu");
   printf("Version: %s\n\n", versionId);
   Serial.println(" (t) Enter Test Mode - All channels fade");
   Serial.println(" (w) Enter Test Mode - Walk channels");
@@ -671,7 +674,7 @@ void RunConfigMode()
   }
   
    /* Ask user for Number of Boards */
-  Serial.print("  Number of Shields Connected ("); Serial.print(number_of_boards); Serial.print("): ");
+  Serial.print("  Number of RJ45 Ports Connected ("); Serial.print(number_of_boards); Serial.print("): ");
   newValue = ReadNumberFromSerial();
   Serial.println("");
   if ((newValue > 0) && (newValue <= MAX_NUMBER_OF_SHIELDS))
@@ -680,21 +683,6 @@ void RunConfigMode()
   } else {
     newNumberOfBoards = number_of_boards;
     Serial.print("Invalid setting for numberOfBoards: "); Serial.print(newValue); Serial.println("");
-  }
-  
-  /* Ask user for Latch Pin setting */
-  for (int i=0; i < newNumberOfBoards; i++)
-  {
-    Serial.print("  Latch Pin for Shield "); Serial.print(i); Serial.print(" ("); Serial.print(latch_pin[i]); Serial.print("): ");
-    int newValue = ReadNumberFromSerial();
-    Serial.println("");
-    if ((newValue >= 4) && (newValue <= 7))
-    {
-      newLatchPin[i] = newValue;
-    } else {
-      newLatchPin[i] = latch_pin[i];
-      Serial.print("Invalid setting for latch pin: "); Serial.print(newValue); Serial.println("");
-    }
   }
   
   /* Ask user for Starting Address setting */
@@ -741,11 +729,7 @@ void RunConfigMode()
   Serial.println(""); 
   Serial.println("New settings: ");
   Serial.print("Interface Type: "); Serial.print(newInterfaceType); Serial.println("");
-  Serial.print("Number of Shields: "); Serial.print(newNumberOfBoards); Serial.println("");
-  for (uint32_t board = 0; board < newNumberOfBoards; board++)
-  {
-    Serial.print("Latch Pin for Shield "); Serial.print(board); Serial.print(": "); Serial.print(newLatchPin[board]); Serial.println("");
-  }
+  Serial.print("Number of RJ45 Ports: "); Serial.print(newNumberOfBoards); Serial.println("");
   Serial.print("Starting Address: "); Serial.print(newStartingAddress); Serial.println("");
   Serial.print("Zero Cross Delay: "); Serial.print(newZeroCrossDelay); Serial.println("");
   Serial.print("RF Channel: "); Serial.print(newRFChannel); Serial.println("");
@@ -763,25 +747,17 @@ void RunConfigMode()
     case 's':
       interface_type = newInterfaceType;
       number_of_boards = newNumberOfBoards;
-      latch_pin[0] = newLatchPin[0];
-      latch_pin[1] = newLatchPin[1];
-      latch_pin[2] = newLatchPin[2];
-      latch_pin[3] = newLatchPin[3];
       starting_address = newStartingAddress;
       rf_channel = newRFChannel;
       zeroCrossDelay = newZeroCrossDelay;
       
       EEPROM.write(0, interface_type);
       EEPROM.write(1, number_of_boards);
-      EEPROM.write(2, latch_pin[0]);
-      EEPROM.write(3, latch_pin[1]);
-      EEPROM.write(4, latch_pin[2]);
-      EEPROM.write(5, latch_pin[3]);
-      EEPROM.write(6, starting_address);
-      EEPROM.write(7, zeroCrossDelay / 256);
-      EEPROM.write(8, (zeroCrossDelay & 0x00FF));
-      EEPROM.write(9,  rf_channel);
-      EEPROM.write(10, Checksum(0,9));
+      EEPROM.write(2, starting_address);
+      EEPROM.write(3, zeroCrossDelay / 256);
+      EEPROM.write(4, (zeroCrossDelay & 0x00FF));
+      EEPROM.write(5,  rf_channel);
+      EEPROM.write(6, Checksum(0,9));
      
       mode = INTERACTIVE_MODE;
       break;
@@ -800,11 +776,7 @@ void PrintConfiguration()
     Serial.println(""); 
     Serial.println("Settings: ");
     Serial.print("Interface Type: "); Serial.print(interface_type); Serial.println("");
-    Serial.print("Number of Shields: "); Serial.print(number_of_boards); Serial.println("");
-    for (uint32_t board = 0; board < number_of_boards; board++)
-    {
-      Serial.print("Latch Pin for Shield "); Serial.print(board); Serial.print(": "); Serial.print(latch_pin[board]); Serial.println("");
-    }
+    Serial.print("Number of RJ45 Ports: "); Serial.print(number_of_boards); Serial.println("");
     Serial.print("Starting Address: "); Serial.print(starting_address); Serial.println("");
     Serial.print("Zero Cross Delay: "); Serial.print(zeroCrossDelay); Serial.println("");
     Serial.print("RF Channel: "); Serial.print(rf_channel); Serial.println("");
@@ -818,20 +790,20 @@ void PrintConfiguration()
 void ReadConfigData()
 {
   /* Check for valid checksum.  If valid, read  config data from EEPROM. */
-  if ( Checksum(0, 10) == 0) 
+  if ( Checksum(0, 6) == 0) 
   {
     interface_type = EEPROM.read(0);
     number_of_boards = EEPROM.read(1);
-    latch_pin[0] = EEPROM.read(2);
-    latch_pin[1] = EEPROM.read(3);
-    latch_pin[2] = EEPROM.read(4);
-    latch_pin[3] = EEPROM.read(5);
-    starting_address = EEPROM.read(6);
-    zeroCrossDelay = ((uint16_t)EEPROM.read(7) * 256) | (EEPROM.read(8) );
-    rf_channel = EEPROM.read(9);
+    latch_pin[0] = 7;
+    latch_pin[1] = 6;
+    latch_pin[2] = 5;
+    latch_pin[3] = 4;
+    starting_address = EEPROM.read(2);
+    zeroCrossDelay = ((uint16_t)EEPROM.read(3) * 256) | (EEPROM.read(4) );
+    rf_channel = EEPROM.read(5);
   } else {
     Serial.print("Using default configuration data. Checksum: ");
-    Serial.println(Checksum(0,10), HEX);
+    Serial.println(Checksum(0,6), HEX);
     
     interface_type = GENERIC_SERIAL;
     number_of_boards = 1;
