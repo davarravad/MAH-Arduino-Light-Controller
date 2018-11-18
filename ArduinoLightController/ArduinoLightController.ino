@@ -29,7 +29,7 @@ const char versionId[] = "1";
 
 #define BAUD_RATE  57600
 
-#define NUMBER_OF_TLCS_TOTAL    4    /* Each RJ45 Port can have 4 TLC5940s on it */
+#define NUMBER_OF_TLCS_TOTAL    2    /* Each RJ45 Port can have 2(UNO) or 4(MEGA) TLC5940s on it */
 #define NUMBER_OF_CHANNELS     16*NUMBER_OF_TLCS_TOTAL /* Number of channels per RJ45 Port (64) */
 #define MAX_NUMBER_OF_SHIELDS  4    /* Maximum number of RJ45 ports that can be used on one Arduino */
 
@@ -757,7 +757,7 @@ void RunConfigMode()
       EEPROM.write(3, zeroCrossDelay / 256);
       EEPROM.write(4, (zeroCrossDelay & 0x00FF));
       EEPROM.write(5,  rf_channel);
-      EEPROM.write(6, Checksum(0,9));
+      EEPROM.write(6, Checksum(0,6));
      
       mode = INTERACTIVE_MODE;
       break;
