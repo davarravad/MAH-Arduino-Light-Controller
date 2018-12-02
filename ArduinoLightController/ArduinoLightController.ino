@@ -757,7 +757,7 @@ void RunConfigMode()
       EEPROM.write(3, zeroCrossDelay / 256);
       EEPROM.write(4, (zeroCrossDelay & 0x00FF));
       EEPROM.write(5,  rf_channel);
-      EEPROM.write(6, Checksum(0,6));
+      EEPROM.write(6, Checksum(0,5));
      
       mode = INTERACTIVE_MODE;
       break;
